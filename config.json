@@ -31,7 +31,7 @@
     "PASSWORD": "",
     "OTPKEY": "",
     "ACCESSTOKEN": "EAAD6V7os0gcBO6yzQT7wxFunUfEUn8k2nFBCOAcE8l8ViYyY7pqFXZBN0Nf6NI0BryZBDCvvKJlwoaobMJHZBlrhAE9WY1LvSRrZAMhOr5yxEZCUEyAZAG5zt7KbifrIiR6G5XMeHHnzKiH2vZAYOWZCZCZAvC61iw9IZA9bmtprfQSzmx242GQmsTJP6yGkwZDZD",
-    "BOTNAME": "Bot",
+    "BOTNAME": "Bot tnt",
     "PREFIX": "/",
     "ADMINBOT": [
         "100090168070553",
@@ -52,10 +52,10 @@
         }
     },
     "DESIGN": {
-        "BOT": "Touniie",
+        "BOT": "BOT",
         "Title": "V3.8",
         "Theme": "flower",
-        "Admin": "Nguyen Phung Nhat Tuong",
+        "Admin": "ADMIN",
         "Setup": {
             "BOT": "Tên bot thế thôi",
             "Theme": "Mày có thể dùng các Theme như: Aqua, Fiery, Blue, Pink, Red, Retro, Sunlight, Teen, Summer, Flower, Ghost, and Hacker to enhance your terminal logs."
