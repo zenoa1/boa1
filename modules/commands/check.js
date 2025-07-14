@@ -1,31 +1,33 @@
 module.exports.config = {
-  name: "check",
-  version: "1.0.1",
-  hasPermssion: 0,
-  credits: "DungUwU && Nghĩa",
-  description: "Check tương tác ngày/tuần/toàn bộ",
-  commandCategory: "Thống kê",
-  usages: "[all/week/day]",
-  cooldowns: 0,
-  dependencies: {
-    "fs-extra": " ",
-    "moment-timezone": " "
-  }
+    name: "checktt",
+    version: "1.0.1",
+    hasPermssion: 0, 
+    credits: "DungUwU && Nghĩa",
+    description: "Check tương tác ngày/tuần/toàn bộ",
+    commandCategory: "Thống kê",
+    usages: "< all/week/day >",
+    cooldowns: 5,
+    dependencies: {
+        "fs": " ",
+        "moment-timezone": " "
+    }
 };
 
 const path = __dirname + '/tt/';
+const { min } = require('moment-timezone');
 const moment = require('moment-timezone');
+const { format } = require('path');
 
 module.exports.onLoad = () => {
-  const fs = require('fs-extra');
-  if (!fs.existsSync(path) || !fs.statSync(path).isDirectory()) {
-    fs.mkdirSync(path, { recursive: true });
-  }
+    const fs = require('fs');
+    if (!fs.existsSync(path) || !fs.statSync(path).isDirectory()) {
+        fs.mkdirSync(path, { recursive: true });
+    }
   setInterval(() => {
     const today = moment.tz("Asia/Ho_Chi_Minh").day();
     const checkttData = fs.readdirSync(path);
     checkttData.forEach(file => {
-      try { var fileData = JSON.parse(fs.readFileSync(path + file)) } catch { return fs.unlinkSync(path+file) };
+      let fileData = JSON.parse(fs.readFileSync(path + file));
       if (fileData.time != today) {
         setTimeout(() => {
           fileData = JSON.parse(fs.readFileSync(path + file));
@@ -39,363 +41,245 @@ module.exports.onLoad = () => {
   }, 60 * 1000);
 }
 
-module.exports.handleEvent = async function({ api, event, Threads }) {
-  try{
-  if (!event.isGroup) return;
-  if (global.client.sending_top == true) return;
-  const fs = global.nodemodule['fs-extra'];
-  const { threadID, senderID } = event;
-  const today = moment.tz("Asia/Ho_Chi_Minh").day();
+module.exports.handleEvent = async function ({ api, args, Users, event, Threads, }) {
+  const threadInfo = await api.getThreadInfo(event.threadID)
+    if (global.client.sending_top == true) return;
+    const fs = global.nodemodule['fs'];
+    const { threadID, senderID } = event;
+    const today = moment.tz("Asia/Ho_Chi_Minh").day();
 
-  if (!fs.existsSync(path + threadID + '.json')) {
-    var newObj = {
-      total: [],
-      week: [],
-      day: [],
-      time: today,
-      last: {
-        time: today,
-        day: [],
-        week: [],
-      },
-    };
-    fs.writeFileSync(path + threadID + '.json', JSON.stringify(newObj, null, 4));} else {
-      var newObj = JSON.parse(fs.readFileSync(path + threadID + '.json'));
-    }
-    //const threadInfo = await Threads.getInfo(threadID) || {};
-    if (true/*threadInfo.hasOwnProperty('isGroup') && threadInfo.isGtrue*/) {
-      const UserIDs = event.participantIDs || [];
-      if (UserIDs.length!=0)for (let user of UserIDs) {
-        if (!newObj.last)newObj.last = {
-          time: today,
-          day: [],
-          week: [],
+    if (!fs.existsSync(path + threadID + '.json')) {
+        const newObj = {
+            total: [],
+            week: [],
+            day: [],
+            time: today
         };
-        if (!newObj.last.week.find(item => item.id == user)) {
-          newObj.last.week.push({
-            id: user,
-            count: 0
-          });
+        fs.writeFileSync(path + threadID + '.json', JSON.stringify(newObj, null, 4));
+        const threadInfo = await Threads.getInfo(threadID) || {};
+        if (threadInfo.hasOwnProperty('isGroup') && threadInfo.isGroup) {
+            const UserIDs = threadInfo.participantIDs;
+            for (user of UserIDs) {
+                if (!newObj.total.find(item => item.id == user)) {
+                    newObj.total.push({
+                        id: user,
+                        count: 0
+                    });
+                }
+                if (!newObj.week.find(item => item.id == user)) {
+                    newObj.week.push({
+                        id: user,
+                        count: 0
+                    });
+                }
+                if (!newObj.day.find(item => item.id == user)) {
+                    newObj.day.push({
+                        id: user,
+                        count: 0
+                    });
+                }
+            }
         }
-        if (!newObj.last.day.find(item => item.id == user)) {
-          newObj.last.day.push({
-            id: user,
-            count: 0
-          });
-        }
-        if (!newObj.total.find(item => item.id == user)) {
-          newObj.total.push({
-            id: user,
-            count: 0
-          });
-        }
-        if (!newObj.week.find(item => item.id == user)) {
-          newObj.week.push({
-            id: user,
-            count: 0
-          });
-        }
-        if (!newObj.day.find(item => item.id == user)) {
-          newObj.day.push({
-            id: user,
-            count: 0
-          });
-        }
-      }
-    };
-    fs.writeFileSync(path + threadID + '.json', JSON.stringify(newObj, null, 4));
-  
-  const threadData = JSON.parse(fs.readFileSync(path + threadID + '.json'));
-  if (threadData.time != today) {
-    global.client.sending_top = true;
-    setTimeout(() => global.client.sending_top = false, 5 * 60 * 1000);
-  }
-  const userData_week_index = threadData.week.findIndex(e => e.id == senderID);
-  const userData_day_index = threadData.day.findIndex(e => e.id == senderID);
-  const userData_total_index = threadData.total.findIndex(e => e.id == senderID);
-  if (userData_total_index == -1) {
-    threadData.total.push({
-      id: senderID,
-      count: 1,
-    });
-  } else threadData.total[userData_total_index].count++;
-  if (userData_week_index == -1) {
-    threadData.week.push({
-      id: senderID,
-      count: 1
-    });
-  } else threadData.week[userData_week_index].count++;
-  if (userData_day_index == -1) {
-    threadData.day.push({
-      id: senderID,
-      count: 1
-    });
-  } else threadData.day[userData_day_index].count++;
-  // if (threadData.time != today) {
-  //     threadData.day.forEach(e => {
-  //         e.count = 0;
-  //     });
-  //     if (today == 1) {
-  //         threadData.week.forEach(e => {
-  //             e.count = 0;
-  //         });
-  //     }
-  //     threadData.time = today;
-  // }
-  let p = event.participantIDs;
-    if (!!p && p.length > 0) {
-      p = p.map($=>$+'');
-      ['day','week','total'].forEach(t=>threadData[t] = threadData[t].filter($=>p.includes($.id+'')));
-    };
-  fs.writeFileSync(path + threadID + '.json', JSON.stringify(threadData, null, 4));
-  } catch(e){};
+        fs.writeFileSync(path + threadID + '.json', JSON.stringify(newObj, null, 4));
+    }
+    const threadData = JSON.parse(fs.readFileSync(path + threadID + '.json'));
+    if (threadData.time != today) {
+      global.client.sending_top = true;
+      setTimeout(() => global.client.sending_top = false, 5 * 60 * 1000);
+    }
+    const userData_week_index = threadData.week.findIndex(e => e.id == senderID);
+    const userData_day_index = threadData.day.findIndex(e => e.id == senderID);
+    const userData_total_index = threadData.total.findIndex(e => e.id == senderID);
+    if (userData_total_index == -1) {
+        threadData.total.push({
+            id: senderID,
+            count: 1,
+        });
+    } else threadData.total[userData_total_index].count++;
+    if (userData_week_index == -1) {
+        threadData.week.push({
+            id: senderID,
+            count: 1
+        });
+    } else threadData.week[userData_week_index].count++;
+    if (userData_day_index == -1) {
+        threadData.day.push({
+            id: senderID,
+            count: 1
+        });
+    } else threadData.day[userData_day_index].count++;
+    // if (threadData.time != today) {
+    //     threadData.day.forEach(e => {
+    //         e.count = 0;
+    //     });
+    //     if (today == 1) {
+    //         threadData.week.forEach(e => {
+    //             e.count = 0;
+    //         });
+    //     }
+    //     threadData.time = today;
+    // }
+
+    fs.writeFileSync(path + threadID + '.json', JSON.stringify(threadData, null, 4));
 }
 
-module.exports.run = async function({ api, event, args, Users, Threads }) {
-  await new Promise(resolve => setTimeout(resolve, 500));
-  const fs = global.nodemodule['fs-extra'];
-  const { threadID, messageID, senderID, mentions } = event;
-  let path_data = path + threadID + '.json';
-  if (!fs.existsSync(path_data)) {
-    return api.sendMessage("⚠️ Chưa có dữ liệu", threadID);
-  }
-  const threadData = JSON.parse(fs.readFileSync(path_data));
-  const query = args[0] ? args[0].toLowerCase() : '';
+module.exports.run = async function ({ api, event, args, Users, Threads }) {
+  let threadInfo = await api.getThreadInfo(event.threadID);
+    await new Promise(resolve => setTimeout(resolve, 500));
+    const fs = global.nodemodule['fs'];
+    const { threadID, messageID, senderID, mentions } = event;
+    if (!fs.existsSync(path + threadID + '.json')) {
+        return api.sendMessage("Chưa có thống kê dữ liệu", threadID);
+    }
+    const threadData = JSON.parse(fs.readFileSync(path + threadID + '.json'));
+    const query = args[0] ? args[0].toLowerCase() : '';
 
-  if (query == 'box') {
-    let body_ = event.args[0].replace(exports.config.name, '')+'box info';
-    let args_ = body_.split(' ');
-    
-    arguments[0].args = args_.slice(1);
-    arguments[0].event.args = args_;
-    arguments[0].event.body = body_;
-    
-    return require('./box.js').run(...Object.values(arguments));
-  } else if (query == 'reset') {
-     let dataThread = (await Threads.getData(threadID)).threadInfo;
-    if (!dataThread.adminIDs.some(item => item.id == senderID)) return api.sendMessage('❎ Bạn không đủ quyền hạn để sử dụng', event.threadID, event.messageID);
-     fs.unlinkSync(path_data);
-     return api.sendMessage(`✅ Đã xóa toàn bộ dữ liệu đếm tương tác của nhóm`, event.threadID);
-     } else if(query == 'lọc') {
+    if(query == 'locmem') {
         let threadInfo = await api.getThreadInfo(threadID);
-        if(!threadInfo.adminIDs.some(e => e.id == senderID)) return api.sendMessage("❎ Bạn không có quyền sử dụng lệnh này", threadID);
-        if(!threadInfo.isGroup) return api.sendMessage("❎ Chỉ có thể sử dụng trong nhóm", threadID);
-        if(!threadInfo.adminIDs.some(e => e.id == api.getCurrentUserID())) return api.sendMessage("⚠️ Bot Cần Quyền Quản Trị Viên", threadID);
+        if(!threadInfo.adminIDs.some(e => e.id == senderID)) return api.sendMessage("〘💬〙⇨ 𝐁𝐚̣𝐧 𝐤𝐡𝐨̂𝐧𝐠 𝐜𝐨́ 𝐪𝐮𝐲𝐞̂̀𝐧 𝐬𝐮̛̉ 𝐝𝐮̣𝐧𝐠 𝐥𝐞̣̂𝐧𝐡 𝐧𝐚̀𝐲", threadID);
+        if(!threadInfo.isGroup) return api.sendMessage("〘🛸〙⇨ 𝐂𝐡𝐢̉ 𝐜𝐨́ 𝐭𝐡𝐞̂̉ 𝐬𝐮̛̉ 𝐝𝐮̣𝐧𝐠 𝐭𝐫𝐨𝐧𝐠 𝐧𝐡𝐨́𝐦", threadID);
+        if(!threadInfo.adminIDs.some(e => e.id == api.getCurrentUserID())) return api.sendMessage("〘🔮〙⇨ 𝐁𝐨𝐭 𝐜𝐚̂̀𝐧 𝐪𝐭𝐯 đ𝐞̂̉ 𝐭𝐡𝐮̛̣𝐜 𝐡𝐢𝐞̣̂𝐧 𝐥𝐞̣̂𝐧𝐡", threadID);
         if(!args[1] || isNaN(args[1])) return api.sendMessage("Error", threadID);
-        let minCount = +args[1],
-            allUser = event.participantIDs;let id_rm = [];
+        let minCount = args[1],
+            allUser = threadInfo.participantIDs;
         for(let user of allUser) {
             if(user == api.getCurrentUserID()) continue;
-            if(!threadData.total.some(e => e.id == user) || threadData.total.find(e => e.id == user).count <= minCount) {
-                await new Promise(resolve=>setTimeout(async () => {
+            if(!threadData.total.some(e => e.id == user) || threadData.total.find(e => e.id == user).count < minCount) {
+                setTimeout(async () => {
                     await api.removeUserFromGroup(user, threadID);
-                    id_rm.push(user);
-                    resolve(true);
-                    /*for(let e in threadData) {
+                    for(let e in threadData) {
                         if(e == 'time') continue;
                         if(threadData[e].some(e => e.id == user)) {
                             threadData[e].splice(threadData[e].findIndex(e => e.id == user), 1);
                         }
-                    }*/
-                }, 1000));
+                    }
+                }, 1000);
             }
         }
-		return api.sendMessage(`✅ Đã xóa ${id_rm.length} thành viên ${minCount} tin nhắn\n\n${id_rm.map(($,i)=>`${i+1}. ${global.data.userName.get($)}\n`).join('')}`, threadID);
-}
-
-  ///////////////////small code////////////////////////////////
-  var x = threadData.total.sort((a, b) => b.count - a.count);
-  var o = [];
-  for (i = 0; i < x.length; i++) {
-    o.push({
-      rank: i + 1,
-      id: x[i].id,
-      count: x[i].count
-    })
-  }
-  /////////////////////////////////////////////////////////////
-  var header = '',
-    body = '',
-    footer = '',
-    msg = '',
-    count = 1,
-    storage = [],
-    data = 0;
-  if (query == 'all' || query == '-a') {
-    header = '[ KIỂM TRA TIN NHẮN TỔNG ]\n';
-    data = threadData.total;
-
-  } else if (query == 'week' || query == '-w') {
-    header = '[ KIỂM TRA TIN NHẮN TUẦN ]\n';
-    data = threadData.week;
-  } else if (query == 'day' || query == '-d') {
-    header = '[ KIỂM TRA TIN NHẮN NGÀY ]\n';
-    data = threadData.day;
-  } else {
-    data = threadData.total;
-  }
-  for (const item of data) {
-    const userName = await Users.getNameUser(item.id) || 'Facebook User';
-    const itemToPush = item;
-    itemToPush.name = userName;
-    storage.push(itemToPush);
-  };
-  let check = ['all', '-a', 'week', '-w', 'day', '-d'].some(e => e == query);
-  if (!check && Object.keys(mentions).length > 0) {
-    //storage = storage.filter(e => mentions.hasOwnProperty(e.id));
-  }
-  //sort by count from high to low if equal sort by name
-  storage.sort((a, b) => {
-    if (a.count > b.count) {
-      return -1;
+        return api.sendMessage(`⇨ Đ𝐚̃ 𝐗𝐨́𝐚 ${allUser.length - threadData.total.filter(e => e.count >= minCount).length} 𝐓𝐡𝐚̀𝐧𝐡 𝐯𝐢𝐞̂𝐧 𝐤𝐡𝐨̂𝐧𝐠 đ𝐮̉ ${minCount} 𝐥𝐚̂̀𝐧`, threadID);
     }
-    else if (a.count < b.count) {
-      return 1;
-    } else {
-      return a.name.localeCompare(b.name);
-    }
-  });
-if ((!check && Object.keys(mentions).length == 0) || (!check && Object.keys(mentions).length == 1) || (!check && event.type == 'message_reply')) {
-        const UID = event.messageReply ? event.messageReply.senderID : Object.keys(mentions)[0] ? Object.keys(mentions)[0] : senderID;
-      const uid = event.type == 'message_reply' ? event.messageReply.senderID: !!Object.keys(event.mentions)[0] ? Object.keys(event.mentions)[0]: !!args[0] ? args[0]: event.senderID;
-    const userRank = storage.findIndex(e => e.id == UID);
-    const userTotal = threadData.total.find(e => e.id == UID) ? threadData.total.find(e => e.id == UID).count : 0;
-    const userTotalWeek = threadData.week.find(e => e.id == UID) ? threadData.week.find(e => e.id == UID).count : 0;
-    const userRankWeek = threadData.week.sort((a, b) => b.count - a.count).findIndex(e => e.id == UID);
-    const userTotalDay = threadData.day.find(e => e.id == UID) ? threadData.day.find(e => e.id == UID).count : 0;
-    const userRankDay = threadData.week.sort((a, b) => b.count - a.count).findIndex(e => e.id == UID);
-    let count_day_last = threadData.last?.day?.find($=>$.id==UID)?.count||0;
-    let count_week_last = threadData.last?.week?.find($=>$.id==UID)?.count||0;
-    let interaction_rate_day = (userTotalDay/count_day_last)*100;
-    let interaction_rate_week = (userTotalWeek/count_week_last)*100;
-    const nameUID = storage[userRank].name || 'Facebook User';
-    let threadInfo = await api.getThreadInfo(event.threadID);
-    nameThread = threadInfo.threadName;
-    var permission;
-    if (global.config.ADMINBOT.includes(UID)) permission = `Admin Bot`;
-    else if
-      (global.config.NDH.includes(UID))
-      permission = `Người Hỗ Trợ`; else if (threadInfo.adminIDs.some(i => i.id == UID)) permission = `Quản Trị Viên`; else permission = `Thành Viên`;
-    const target = UID == senderID ? 'Bạn' : nameUID;
-    var storageDay = [];
-        var storageWeek = [];
-        var storageTotal = [];
-        for (const item of threadData.day) {
-            storageDay.push(item);
-        }
-        for (const item of threadData.week) {
-            storageWeek.push(item);
-        }
-        for (const item of threadData.total) {
-            storageTotal.push(item);
-        }
-        footer = `${storageDay.reduce((a, b) => a + b.count, 0)}`;
-        footer1 = `${storageWeek.reduce((a, b) => a + b.count, 0)}`;
-        footer2 = `${storageTotal.reduce((a, b) => a + b.count, 0)}`;
-    if (userRank == -1) {
-      return api.sendMessage(`${target} chưa có dữ liệu`, threadID);
-    }
-    body += `[ ${nameThread} ]\n\n👤 Tên: ${nameUID}\n🎖️ Chức Vụ: ${permission}\n📝 Profile: https://www.facebook.com/profile.php?id=${UID}\n💬 Tin Nhắn Trong Ngày: ${userTotalDay.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",")}\n📊 Tỉ Lệ Tương Tác Ngày ${((userTotalDay/footer)*100).toFixed(2)}%\n🥇 Hạng Trong Ngày: ${userRankDay + 1}\n💬 Tin Nhắn Trong Tuần: ${userTotalWeek.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",")}\n📊 Tỉ Lệ Tương Tác Tuần ${((userTotalWeek/footer1)*100).toFixed(2)}%\n🥈 Hạng Trong Tuần: ${userRankWeek + 1}\n💬 Tổng Tin Nhắn: ${userTotal.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",")}\n📊 Tỉ Lệ Tương Tác Tổng ${((userTotal/footer2)*100).toFixed(2)}%\n🏆 Hạng Tổng: ${userRank + 1}\n\n📌 Thả cảm xúc '❤️' tin nhắn này để xem tổng tin nhắn của toàn bộ thành viên trong nhóm`
-  } else {
-    body = storage.map(item => {
-            return `${count++}. ${item.name} - ${item.count.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",")} Tin Nhắn`;
-        }).join('\n');
-        footer = `\n💬 Tổng Tin Nhắn: ${storage.reduce((a, b) => a + b.count, 0).toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",")}`;
-  }
 
-  msg = `${header}\n${body}`;
-  return api.sendMessage(msg + '\n' /*+ `📊 Bạn hiện đang đứng ở hạng: ${(o.filter(id => id.id == senderID))[0]['rank']}` */ + `${query == 'all' || query == '-a' ? `📊 Bạn hiện đang đứng ở hạng: ${(o.filter(id => id.id == senderID))[0]['rank']}\n\nReply (phản hồi) tin nhắn này theo số thứ tự để xóa thành viên ra khỏi nhóm.\n${global.config.PREFIX}check lọc + số tin nhắn để xóa thành viên ra khỏi nhóm.\n${global.config.PREFIX}check reset -> reset lại toàn bộ dữ liệu tin nhắn.\n${global.config.PREFIX}check box -> xem thông tin nhóm` : ""}`, threadID, (error, info) => {
-
-    if (error) return console.log(error)
+    var header = '',
+        body = '',
+        footer = '',
+        msg = '',
+        count = 1,
+        storage = [],
+        data = 0;
     if (query == 'all' || query == '-a') {
-      global.client.handleReply.push({
-        name: this.config.name,
-        messageID: info.messageID,
-        tag: 'locmen',
-        thread: threadID,
-        author: senderID, storage,
-      })
+        header = '===𝗧𝗨̛𝗢̛𝗡𝗚 𝗧𝗔́𝗖 𝗔𝗟𝗟===\n';
+        data = threadData.total;
+    } else if (query == 'week' || query == '-w') {
+        header = '===𝗧𝗨̛𝗢̛𝗡𝗚 𝗧𝗔́𝗖 𝗧𝗨𝗔̂̀𝗡===\n';
+        data = threadData.week;
+    } else if (query == 'day' || query == '-d') {
+        header = '===𝗧𝗨̛𝗢̛𝗡𝗚 𝗧𝗔́𝗖 𝗡𝗚𝗔̀𝗬===\n';
+        data = threadData.day;
+    } else {
+        data = threadData.total;
     }
-    //if((!check && Object.keys(mentions).length == 0) || (!check && Object.keys(mentions).length == 1) || (!check && event.type == 'message_reply')){
-    global.client.handleReaction.push({
-      name: this.config.name,
-      messageID: info.messageID,
-      sid: senderID,
-    })
-  });
-  threadData = storage = null;
-}
-module.exports.handleReply = async function({
-  api
-  , event
-  , args
-  , handleReply
-  , client
-  , __GLOBAL
-  , permssion
-  , Threads
-  , Users
-  , Currencies
-}) {
-  try {
-    const { senderID } = event
-    let dataThread = (await Threads.getData(event.threadID)).threadInfo;
-    if (!dataThread.adminIDs.some(item => item.id == api.getCurrentUserID())) return api.sendMessage('❎ Bot cần quyền quản trị viên!', event.threadID, event.messageID);
-    if (!dataThread.adminIDs.some(item => item.id == senderID)) return api.sendMessage('❎ Bạn không đủ quyền hạn để lọc thành viên!', event.threadID, event.messageID);
-    const fs = require('fs')
-    //const threadData = JSON.parse(fs.readFileSync(path + handleReply.thread + '.json'));
-    // const data = threadData["total"]
-    /*var x = threadData.total.sort((a, b) => b.count - a.count);
-    var o = [];
-    for (i = 0; i < x.length; i++) {
-      o.push({
-        rank: i + 1,
-        id: x[i].id,
-        count: x[i].count
-      })
-    }
-    console.log(o)*/
-    let split = event.body.split(" ")
-
-    if (isNaN(split.join(''))) return api.sendMessage(`⚠️ Dữ liệu không hợp lệ`, event.threadID);
-
-    let msg = [], count_err_rm = 0;
-    for (let $ of split) {
-      let id = handleReply?.storage[$ - 1]?.id;
-
-      if (!!id)try {
-        await api.removeUserFromGroup(id, event.threadID);
-        msg.push(`${$}. ${global.data.userName.get(id)}\n`)
-      } catch (e) {++count_err_rm;continue};
+    for (const item of data) {
+        const userName = await Users.getNameUser(item.id) || '𝐓𝐞̂𝐧 𝐤𝐡𝐨̂𝐧𝐠 𝐭𝐨̂̀𝐧 𝐭𝐚̣𝐢';
+        const itemToPush = item;
+        itemToPush.name = userName;
+        storage.push(itemToPush);
     };
-
-    api.sendMessage(`✅ Đã xóa ${split.length-count_err_rm} người dùng thành công\n❎ Thất bại ${count_err_rm}\n\n${msg.join('\n')}`, handleReply.thread/*, (e, i) => {
-      for (i = 0; i < split.length; i++) {
-        if (e) return api.sendMessage('❎ Hãy reply 1 con số bất kỳ trong danh sách tương tác', handleReply.thread)
-        if (i > split.length) break;
-        var oi = split[i]
-        api.removeUserFromGroup(o[oi - 1].id, handleReply.thread)
-      }
-    }*/)
-
-  } catch (e) {
-    console.log(e)
-  }
-}
-module.exports.handleReaction = function({ event, Users, Threads, api, handleReaction: _, Currencies }) {
-  const fs = require('fs')
-  if (event.userID != _.sid) return;
-  if (event.reaction != "❤") return; 
-  api.unsendMessage(_.messageID)
-  let data = JSON.parse(fs.readFileSync(`${path}${event.threadID}.json`));
-  let sort = data.total.sort((a, b) => a.count < b.count ? 0 : -1);
-  api.sendMessage(`[ KIỂM TRA TẤT CẢ TIN NHẮN ]\n\n${sort.map(($, i) => `${i + 1}. ${global.data.userName.get($.id)} - ${$.count} tin.`).join('\n')}\n\n💬Tổng tin nhắn: ${data.total.reduce((s, $) => s + $.count, 0).toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",")}\n📊 Bạn hiện đang đứng ở hạng: ${sort.findIndex($ => $.id == event.userID) + 1}\n\n📌 Reply (phản hồi) tin nhắn này theo số thứ tự để xóa thành viên ra khỏi nhóm.\n${global.config.PREFIX}check kick + số tin nhắn để xóa thành viên ra khỏi nhóm.\n${global.config.PREFIX}check reset -> reset lại toàn bộ dữ liệu tin nhắn.\n${global.config.PREFIX}check box -> xem thông tin nhóm.`, event.threadID, (err, info) => global.client.handleReply.push({
-    name: this.config.name,
-    messageID: info.messageID,
-    tag: 'locmen',
-    thread: event.threadID,
-    author: event.senderID,
-    storage: sort,
-  })
-  );
+    let check = ['all', '-a', 'week', '-w', 'day', '-d'].some(e => e == query);
+    if (!check && Object.keys(mentions).length > 0) {
+        storage = storage.filter(e => mentions.hasOwnProperty(e.id));
+    }
+    //sort by count from high to low if equal sort by name
+    storage.sort((a, b) => {
+        if (a.count > b.count) {
+            return -1;
+        }
+        else if (a.count < b.count) {
+            return 1;
+        } else {
+            return a.name.localeCompare(b.name);
+        }
+    });
+    if ((!check && Object.keys(mentions).length == 0) || (!check && Object.keys(mentions).length == 1) || (!check && event.type == 'message_reply')) {
+        const UID = event.messageReply ? event.messageReply.senderID : Object.keys(mentions)[0] ? Object.keys(mentions)[0] : senderID;
+        const userRank = storage.findIndex(e => e.id == UID);
+        const userTotal = threadData.total.find(e => e.id == UID) ? threadData.total.find(e => e.id == UID).count : 0;
+        const userTotalWeek = threadData.week.find(e => e.id == UID) ? threadData.week.find(e => e.id == UID).count : 0;
+        const userTotalDay = threadData.day.find(e => e.id == UID) ? threadData.day.find(e => e.id == UID).count : 0;
+        const nameUID = storage[userRank].name || '𝐓𝐞̂𝐧 𝐤𝐡𝐨̂𝐧𝐠 𝐭𝐨̂̀𝐧 𝐭𝐚̣𝐢';
+        const target = UID == senderID ? '𝐁𝐚̣𝐧' : nameUID;
+      const moment = require("moment-timezone");
+  const timeNow = moment.tz("Asia/Ho_Chi_Minh").format("DD/MM/YYYY || HH:mm:ss");
+      var permission;
+        if (global.config.ADMINBOT.includes(UID)) permission = `𝐀𝐝𝐦𝐢𝐧 𝐁𝐨𝐭`;
+else if
+(global.config.NDH.includes(UID)) 
+permission = `𝐍𝐠𝐮̛𝐨̛̀𝐢 𝐇𝐨̂̃ 𝐓𝐫𝐨̛̣`; else if (threadInfo.adminIDs.some(i => i.id == UID)) permission = `𝐐𝐮𝐚̉𝐧 𝐓𝐫𝐢̣ 𝐕𝐢𝐞̂𝐧`; else permission = `𝐓𝐡𝐚̀𝐧𝐡 𝐕𝐢𝐞̂𝐧`;
+      var thu = moment.tz('Asia/Ho_Chi_Minh').format('dddd');
+  if (thu == 'Sunday') thu = '𝐂𝐡𝐮̉ 𝐍𝐡𝐚̣̂𝐭'
+  if (thu == 'Monday') thu = '𝐓𝐡𝐮̛́ 𝐇𝐚𝐢'
+  if (thu == 'Tuesday') thu = '𝐓𝐡𝐮̛́ 𝐁𝐚'
+  if (thu == 'Wednesday') thu = '𝐓𝐡𝐮̛́ 𝐓𝐮̛'
+  if (thu == "Thursday") thu = '𝐓𝐡𝐮̛́ 𝐍𝐚̆𝐦'
+  if (thu == 'Friday') thu = '𝐓𝐡𝐮̛́ 𝐒𝐚́𝐮'
+  if (thu == 'Saturday') thu = '𝐓𝐡𝐮̛́ 𝐁𝐚̉𝐲'
+      let threadName = threadInfo.threadName;
+        if (userRank == -1) {
+            return api.sendMessage(`⇨ ${target} 𝐜𝐡𝐮̛𝐚 𝐜𝐨́ 𝐭𝐡𝐨̂́𝐧𝐠 𝐤𝐞̂ 𝐝𝐮̛̃ 𝐥𝐢𝐞̣̂`, threadID);
+        }
+        body +=
+          `〘 𝗖𝗛𝗘𝗖𝗞 𝗧𝗨̛𝗢̛𝗡𝗚 𝗧𝗔́𝗖 〙 \n━━━━━━━━━━━━━━━━━━\n\n〘👤〙 ⇨ 𝗡𝗮𝗺𝗲: ${nameUID}\n〘🌸〙 ⇨ 𝗜𝗗: ${event.senderID}\n〘💓〙⇨ 𝗖𝗵𝘂̛́𝗰 𝘃𝘂̣: ${permission}\n〘🔰〙⇨ 𝗧𝗲̂𝗻 𝗻𝗵𝗼́𝗺: ${threadName}\n━━━━━━━━━━━━━━━━━━\n〘💌〙 ⇨ 𝗧𝗶𝗻 𝗻𝗵𝗮̆́𝗻 𝘁𝗿𝗼𝗻𝗴 𝗻𝗴𝗮̀𝘆: ${userTotalDay}\n〘💓〙 ⇨ 𝗛𝗮̣𝗻𝗴 𝘁𝗿𝗼𝗻𝗴 𝗻𝗴𝗮̀𝘆: ${count++}\n〘💬〙 ⇨ 𝗧𝗶𝗻 𝗻𝗵𝗮̆́𝗻 𝘁𝗿𝗼𝗻𝗴 𝘁𝘂𝗮̂̀𝗻: ${userTotalWeek}\n〘🧸〙 ⇨ 𝗛𝗮̣𝗻𝗴 𝘁𝗿𝗼𝗻𝗴 𝘁𝘂𝗮̂̀𝗻: ${count++}\n〘📚〙 ⇨ 𝗧𝗼̂̉𝗻𝗴 𝘁𝗶𝗻 𝗻𝗵𝗮̆́𝗻: ${userTotal}\n〘🥇〙 ⇨ 𝗛𝗮̣𝗻𝗴 𝘁𝗼̂̉𝗻𝗴:  ${userRank + 1}\n━━━━━━━━━━━━━━━━━━\n〘💮〙 ⇨ 𝗡𝗲̂́𝘂 𝗺𝘂𝗼̂́𝗻 𝘅𝗲𝗺 𝘁𝗵𝗼̂𝗻𝗴 𝘁𝗶𝗻 𝗻𝗵𝗼́𝗺 𝗯𝗮̣𝗻 𝘁𝗵𝗮̉ 𝗰𝗮̉𝗺 𝘅𝘂́𝗰 "❤" 𝘃𝗮̀𝗼 𝘁𝗶𝗻 𝗻𝗵𝗮̆́𝗻 𝗻𝗮̀𝘆 𝗰𝘂̉𝗮 𝗯𝗼𝘁`.replace(/^ +/gm, '');
+    } else {
+        body = storage.map(item => {
+            return `${count++}. ${item.name} (${item.count})`;
+        }).join('\n');
+        footer = `➜ Tổng Tin Nhắn: ${storage.reduce((a, b) => a + b.count, 0)}`;
+    }
+  async function streamURL(url, mime='jpg') {
+    const dest = `${__dirname}/cache/${Date.now()}.${mime}`,
+    downloader = require('image-downloader'),
+    fse = require('fs-extra');
+    await downloader.image({
+        url, dest
+    });
+    setTimeout(j=>fse.unlinkSync(j), 60*1000, dest);
+    return fse.createReadStream(dest);
+};
+    msg = `${header}\n${body}\n${footer}`;
+    api.sendMessage({body: msg, attachment: [await streamURL(threadInfo.imageSrc), await streamURL(`
+https://graph.facebook.com/${event.senderID}/picture?height=720&width=720&access_token=6628568379%7Cc1e620fa708a1d5696fb991c1bde5662`)]}, threadID, (err, info) => {
+    global.client.handleReaction.push({
+      name: this.config.name, 
+      messageID: info.messageID,
+      author: event.senderID,
+    })
+    },event.messageID);
+                     }
+module.exports.handleReaction = async ({ event, api, handleReaction, Currencies, Users}) => {
+const axios = global.nodemodule["axios"];
+const fs = global.nodemodule["fs-extra"];
+const { threadID, messageID, userID } = event;
+  async function streamURL(url, mime='jpg') {
+    const dest = `${__dirname}/cache/${Date.now()}.${mime}`,
+    downloader = require('image-downloader'),
+    fse = require('fs-extra');
+    await downloader.image({
+        url, dest
+    });
+    setTimeout(j=>fse.unlinkSync(j), 60*1000, dest);
+    return fse.createReadStream(dest);
+};
+  let threadInfo = await api.getThreadInfo(event.threadID);
+  let threadName = threadInfo.threadName;
+  let id = threadInfo.threadID;
+  let sex = threadInfo.approvalMode;
+  var pd = sex == false ? 'Tắt' : sex == true ? 'Bật' : '\n';
+  let qtv = threadInfo.adminIDs.length;
+let color = threadInfo.color;
+  let icon = threadInfo.emoji;
+  let threadMem = threadInfo.participantIDs.length;
+if (event.userID != handleReaction.author) return;
+if (event.reaction != "❤") return; 
+ api.unsendMessage(handleReaction.messageID);
+        var msg = `=====「 𝗧𝗛𝗢̂𝗡𝗚 𝗧𝗜𝗡 𝗡𝗛𝗢́𝗠 」=====\n\n〘🏘️〙⇨ 𝗧𝗲̂𝗻 𝗻𝗵𝗼́𝗺: ${threadName}\n〘⚙️〙⇨ 𝗜𝗗 𝗻𝗵𝗼́𝗺: ${id}\n〘👥〙 ⇨ 𝗦𝗼̂́ 𝘁𝗵𝗮̀𝗻𝗵 𝘃𝗶𝗲̂𝗻 𝗻𝗵𝗼́𝗺: ${threadMem}\n〘💞〙 ⇨ 𝗤𝘂𝗮̉𝗻 𝘁𝗿𝗶̣ 𝘃𝗶𝗲̂𝗻: ${qtv}\n〘🌷〙 ⇨ 𝗣𝗵𝗲̂ 𝗱𝘂𝘆𝗲̣̂𝘁: ${pd}\n〘😻〙 ⇨ 𝗕𝗶𝗲̂̉𝘂 𝘁𝘂̛𝗼̛̣𝗻𝗴 𝗰𝗮̉𝗺 𝘅𝘂́𝗰: ${icon ? icon : 'Không sử dụng'}\n〘💝〙 ⇨ 𝗠𝗮̃ 𝗴𝗶𝗮𝗼 𝗱𝗶𝗲̣̂𝗻: ${color}\n━━━━━━━━━━━━━━━━━━\n〘🍑〙 ⇨ 𝗧𝗼̂̉𝗻𝗴 𝘀𝗼̂́ 𝘁𝗶𝗻 𝗻𝗵𝗮̆́𝗻 𝗰𝘂̉𝗮 𝗻𝗵𝗼́𝗺: ${threadInfo.messageCount}\n〘🎀〙 ⇨ 𝗣𝗵𝗶́𝗮 𝘁𝗿𝗲̂𝗻 𝗹𝗮̀ 𝘁𝗵𝗼̂𝗻𝗴 𝘁𝗶𝗻 𝗰𝘂̉𝗮 𝗻𝗵𝗼́𝗺 𝗯𝗮̣𝗻 𝗱𝘂̀𝗻𝗴 ${global.config.PREFIX}𝗯𝗼𝘅 𝗶𝗻𝗳𝗼 đ𝗲̂̉ 𝘅𝗲𝗺 𝗰𝗵𝗶 𝘁𝗶𝗲̂́𝘁 `
+        return api.sendMessage({body: msg, attachment: await streamURL(threadInfo.imageSrc)},event.threadID,event.messageID);
 }
